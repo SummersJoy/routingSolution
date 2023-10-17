@@ -5,7 +5,7 @@ import numpy as np
 from numba import njit, int32
 
 
-@njit(fastmath=True, cache=True)
+@njit(fastmath=True)
 def get_route_len(c: np.ndarray, route: np.ndarray) -> float:
     res = 0.
     res += c[0, route[0]]
@@ -19,7 +19,7 @@ def get_route_len(c: np.ndarray, route: np.ndarray) -> float:
     return res
 
 
-@njit(fastmath=True, cache=True)
+@njit(fastmath=True)
 def get_trip_len(c: np.ndarray, trip: np.ndarray) -> float:
     """
     compute the total travel distance of a given trip
@@ -30,7 +30,7 @@ def get_trip_len(c: np.ndarray, trip: np.ndarray) -> float:
     return res
 
 
-@njit(fastmath=True, cache=True)
+@njit(fastmath=True)
 def get_trip_dmd(trip: np.ndarray, q: np.ndarray, trip_num: np.ndarray) -> np.ndarray:
     """
     compute the total demand on each trip
@@ -45,7 +45,7 @@ def get_trip_dmd(trip: np.ndarray, q: np.ndarray, trip_num: np.ndarray) -> np.nd
     return res
 
 
-@njit(fastmath=True, cache=True)
+@njit(fastmath=True)
 def get_trip_num(trip: np.ndarray) -> np.ndarray:
     """
     compute the number of customers on each trip
@@ -64,7 +64,7 @@ def get_trip_num(trip: np.ndarray) -> np.ndarray:
     return res
 
 
-@njit(fastmath=True, cache=True)
+@njit(fastmath=True)
 def get_max_route_len(q: np.ndarray, w: float) -> int:
     """
     Compute the max number of possible customer in each trip
@@ -79,11 +79,11 @@ def get_max_route_len(q: np.ndarray, w: float) -> int:
     return n
 
 
-@njit(cache=True)
+@njit()
 def get_neighbors(lookup_prev, lookup_next, u, v):
     u_prev = lookup_prev[u]
     x = lookup_next[u]
-    x_post = lookup_next[x]
+    x_post = lookup_next[x] if x else 0
 
     v_prev = lookup_prev[v] if v else 0
     y = lookup_next[v] if v else 0
@@ -91,7 +91,7 @@ def get_neighbors(lookup_prev, lookup_next, u, v):
     return u_prev, x, x_post, v_prev, y, y_post
 
 
-@njit(cache=True)
+@njit()
 def get_demand(q, u, x, v, y):
     u_dmd = q[u]
     x_dmd = q[x]
@@ -100,7 +100,7 @@ def get_demand(q, u, x, v, y):
     return u_dmd, x_dmd, v_dmd, y_dmd
 
 
-@njit(cache=True)
+@njit()
 def get_route_pos(lookup, i, j):
     r1 = lookup[i, 0]
     pos1 = lookup[i, 1]

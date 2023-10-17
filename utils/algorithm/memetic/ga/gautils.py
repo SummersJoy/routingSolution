@@ -4,7 +4,7 @@ from utils.aorr.tripattr import get_trip_num, get_neighbors, get_demand, get_tri
 from utils.algorithm.memetic.localsearch.lsoperator.single_relocate import m1_cost_inter, do_m1_inter, do_m1_intra
 
 
-@njit(fastmath=True, cache=True)
+@njit(fastmath=True)
 def fill_chromosome(p1: np.ndarray, p2: np.ndarray, c1: np.ndarray, i: int, j: int, n: int) -> None:
     """
     iteratively fill elements in each chromosome to achieve LOX
@@ -31,7 +31,7 @@ def fill_chromosome(p1: np.ndarray, p2: np.ndarray, c1: np.ndarray, i: int, j: i
                 count_f += 1
 
 
-@njit(fastmath=True, cache=True)
+@njit(fastmath=True)
 def get_new_ind(n):
     tmp = np.random.permutation(n) + 1
     s = np.empty(n + 1, dtype=int32)
@@ -40,13 +40,17 @@ def get_new_ind(n):
     return s
 
 
-@njit(fastmath=True, cache=True)
-def descend(n, test_lookup, test_lookup_prev, test_lookup_next, q, trip_dmd, test_trip_num, c, w, neighbor,
-            tol=1e-4):
+@njit(fastmath=True)
+def descend(n, test_lookup, test_lookup_prev, test_lookup_next, q, trip_dmd, test_trip_num, c, w, neighbor, tol=1e-4):
     """
     test the correctness of m1 operations
     """
-    for u, v in neighbor:
+    num_neighbor = len(neighbor)
+    idx = np.random.randint(0, num_neighbor)
+    neighbor_cgd = np.empty_like(neighbor)
+    neighbor_cgd[:(num_neighbor - idx)] = neighbor[idx:]
+    neighbor_cgd[(num_neighbor - idx):] = neighbor[:idx]
+    for u, v in neighbor_cgd:
         r1, r2, pos1, pos2 = get_route_pos(test_lookup, u, v)
         u_prev, x, x_post, v_prev, y, y_post = get_neighbors(test_lookup_prev, test_lookup_next, u, v)
         u_dmd, x_dmd, v_dmd, y_dmd = get_demand(q, u, x, v, y)
@@ -56,6 +60,17 @@ def descend(n, test_lookup, test_lookup_prev, test_lookup_next, q, trip_dmd, tes
                 if gain > tol:
                     do_m1_inter(r1, r2, pos2, test_lookup, trip_dmd, u_dmd, test_trip_num, test_lookup_prev,
                                 test_lookup_next, u_prev, u, x, v, y)
+                    # new_trip = lookup2trip(test_lookup, max_route_len, len(trip))
+                    # new_lookup_prev, new_lookup_next = trip_lookup_precedence(new_trip, test_trip_num, n)
+                    #
+                    # trip_benchmark[r1] = np.append(np.delete(trip_benchmark[r1], pos1), 0)
+                    # trip_benchmark[r2] = np.insert(trip_benchmark[r2], pos2 + 1, u)[:-1]
+                    # if np.sum(trip_benchmark) != trip_total:
+                    #     raise ValueError("Missing customer in trip benchmark")
+                    # assert abs(get_trip_len(c, trip_benchmark) - get_trip_len(c, new_trip)) <= 1e-4
+                    # # assert np.allclose(new_trip[:n_row], trip_benchmark[:n_row])
+                    # assert np.allclose(new_lookup_prev[1:], test_lookup_prev[1:])
+                    # assert np.allclose(new_lookup_next[1:], test_lookup_next[1:])
                     return gain
         else:
             if u != y and v != x:
@@ -80,3 +95,17 @@ def descend(n, test_lookup, test_lookup_prev, test_lookup_next, q, trip_dmd, tes
                     return gain
             break
     return 0.
+
+
+# todo: return 0 and 1 instead of True and False, timeit
+@njit(fastmath=True)
+def check_spaced(space_hash: np.ndarray, val: float, delta: float) -> bool:
+    """
+    check if new chromosome is well-spaced in the population in O(1) time
+    """
+    idx = int32(val / delta)
+    if space_hash[idx]:
+        return False
+    else:
+        space_hash[idx] = 1.
+        return True

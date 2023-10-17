@@ -2,7 +2,7 @@ import numpy as np
 from numba import njit
 
 
-@njit(fastmath=True, cache=True)
+@njit(fastmath=True)
 def m1_cost_inter(c, u_prev, u, x, v, y):
     route1_break1 = c[u_prev, u]
     route1_break2 = c[u, x]
@@ -17,14 +17,14 @@ def m1_cost_inter(c, u_prev, u, x, v, y):
     return gain
 
 
-@njit(fastmath=True, cache=True)
+@njit(fastmath=True)
 def m1_cost_intra(c, u_prev, u, x, v, y):
     if u == y:
         return 0.
     return m1_cost_inter(c, u_prev, u, x, v, y)
 
 
-@njit(cache=True)
+@njit()
 def do_m1_inter(r1, r2, pos2, lookup, trip_dmd, u_dmd, trip_num, lookup_prev, lookup_next, u_prev, u, x, v, y):
     """
     perform m1 movements
@@ -46,7 +46,7 @@ def do_m1_inter(r1, r2, pos2, lookup, trip_dmd, u_dmd, trip_num, lookup_prev, lo
     trip_num[r2] += 1
 
 
-@njit(cache=True)
+@njit()
 def do_m1_intra(pos1, pos2, u_prev, u, x, v, y, lookup, lookup_next, lookup_prev):
     # update lookup table
     m1_lookup_intra_update(pos1, pos2, u, v, y, lookup, lookup_next)
@@ -54,7 +54,7 @@ def do_m1_intra(pos1, pos2, u_prev, u, x, v, y, lookup, lookup_next, lookup_prev
     m1_lookup_precedence_update(lookup_prev, lookup_next, u_prev, u, x, v, y)
 
 
-@njit(cache=True)
+@njit()
 def m1_lookup_inter_update(r2: int, pos2: int, u: int, v: int, lookup: np.ndarray, lookup_next: np.ndarray) -> None:
     """
     update trip lookup table after inter route relocation
@@ -74,7 +74,7 @@ def m1_lookup_inter_update(r2: int, pos2: int, u: int, v: int, lookup: np.ndarra
     lookup[u, 1] = pos2 + 1
 
 
-@njit(cache=True)
+@njit()
 def m1_lookup_intra_update(pos1: int, pos2: int, u: int, v: int, y: int, lookup: np.ndarray, lookup_next: np.ndarray):
     """
     update trip lookup table after intra route relocation
@@ -95,7 +95,7 @@ def m1_lookup_intra_update(pos1: int, pos2: int, u: int, v: int, y: int, lookup:
         raise ValueError(f"Duplicated i, j: {u}, {v}, {pos1}, {pos2}")
 
 
-@njit(cache=True)
+@njit()
 def m1_lookup_precedence_update(lookup_prev, lookup_next, u_prev, u, x, v, y):
     """
     update lookup_prev and lookup_next after performing m1

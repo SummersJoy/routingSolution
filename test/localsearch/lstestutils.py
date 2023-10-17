@@ -6,8 +6,6 @@ from utils.aorr.tripattr import get_trip_num, get_neighbors, get_demand, get_tri
 from utils.algorithm.memetic.localsearch.lsoperator.single_relocate import m1_cost_inter, do_m1_inter, do_m1_intra
 
 
-# todo: no need to update trip_benchmark when running
-@njit(cache=True)
 def do_ls_inter_m1_test(n, test_lookup, test_lookup_prev, test_lookup_next, q, trip_dmd, test_trip_num, max_route_len,
                         trip, c, trip_benchmark, n_row, w, neighbor, trip_total, idx, tol=1e-4):
     """
@@ -27,52 +25,64 @@ def do_ls_inter_m1_test(n, test_lookup, test_lookup_prev, test_lookup_next, q, t
                 if gain > tol:
                     do_m1_inter(r1, r2, pos2, test_lookup, trip_dmd, u_dmd, test_trip_num, test_lookup_prev,
                                 test_lookup_next, u_prev, u, x, v, y)
-                    # new_trip = lookup2trip(test_lookup, max_route_len, len(trip))
-                    # new_lookup_prev, new_lookup_next = trip_lookup_precedence(new_trip, test_trip_num, n)
-                    #
-                    # trip_benchmark[r1] = np.append(np.delete(trip_benchmark[r1], pos1), 0)
-                    # trip_benchmark[r2] = np.insert(trip_benchmark[r2], pos2 + 1, u)[:-1]
-                    # if np.sum(trip_benchmark) != trip_total:
-                    #     raise ValueError("Missing customer in trip benchmark")
-                    # assert abs(get_trip_len(c, trip_benchmark) - get_trip_len(c, new_trip)) <= 1e-4
+                    new_trip = lookup2trip(test_lookup, max_route_len, len(trip))
+                    new_lookup_prev, new_lookup_next = trip_lookup_precedence(new_trip, test_trip_num, n)
+
+                    trip_benchmark[r1] = np.append(np.delete(trip_benchmark[r1], pos1), 0)
+                    # tmp_route = trip_benchmark[r2]
+                    # tmp_route[pos2 + 1:] = tmp_route[pos2:-1]
+                    # tmp_route[pos2 + 1] = u
+                    trip_benchmark[r2] = np.insert(trip_benchmark[r2], pos2 + 1, u)[:-1]
+                    if np.sum(trip_benchmark) != trip_total:
+                        raise ValueError("Missing customer in trip benchmark")
+                    assert abs(get_trip_len(c, trip_benchmark) - get_trip_len(c, new_trip)) <= 1e-4
                     # assert np.allclose(new_trip[:n_row], trip_benchmark[:n_row])
-                    # assert np.allclose(new_lookup_prev[1:], test_lookup_prev[1:])
-                    # assert np.allclose(new_lookup_next[1:], test_lookup_next[1:])
+                    assert np.allclose(new_lookup_prev[1:], test_lookup_prev[1:])
+                    assert np.allclose(new_lookup_next[1:], test_lookup_next[1:])
                     return gain
         else:
             if u != y and v != x:
                 gain = m1_cost_inter(c, u_prev, u, x, v, y)
                 if gain > tol:
-                    # np.savetxt("lookup_ori", test_lookup)
-                    # np.savetxt("lookup_prev_ori", test_lookup_prev)
-                    # np.savetxt("lookup_next_ori", test_lookup_next)
-                    # np.savetxt("trip_ori", trip_benchmark)
-                    # np.savetxt("u", np.array([u]))
-                    # np.savetxt("v", np.array([v]))
-                    # np.savetxt("r2", np.array([r2]))
-                    # np.savetxt("gain", np.array([gain]))
+                    np.savetxt("lookup_ori", test_lookup)
+                    np.savetxt("lookup_prev_ori", test_lookup_prev)
+                    np.savetxt("lookup_next_ori", test_lookup_next)
+                    np.savetxt("trip_ori", trip_benchmark)
+                    np.savetxt("u", np.array([u]))
+                    np.savetxt("v", np.array([v]))
+                    np.savetxt("r2", np.array([r2]))
+                    np.savetxt("gain", np.array([gain]))
                     do_m1_intra(pos1, pos2, u_prev, u, x, v, y, test_lookup, test_lookup_next, test_lookup_prev)
-                    # new_trip = lookup2trip(test_lookup, max_route_len, len(trip))
-                    # new_lookup_prev, new_lookup_next = trip_lookup_precedence(new_trip, test_trip_num, n)
-                    #
-                    # u_removed_route = np.delete(trip_benchmark[r1], pos1)
-                    # if pos1 < pos2:
-                    #     trip_benchmark[r2] = np.insert(u_removed_route, pos2, u)
-                    # else:
-                    #     trip_benchmark[r2] = np.insert(u_removed_route, pos2 + 1, u)
-                    # np.savetxt("lookup_cgd", test_lookup)
-                    # np.savetxt("lookup_prev_cgd", test_lookup_prev)
-                    # np.savetxt("lookup_next_cgd", test_lookup_next)
-                    # np.savetxt("trip_cgd", trip_benchmark)
-                    # np.savetxt("new_trip", new_trip)
-                    # np.savetxt("lookup_prev_bench", new_lookup_prev)
-                    # np.savetxt("lookup_next_bench", new_lookup_next)
-                    # if np.sum(trip_benchmark) != trip_total:
-                    #     raise ValueError("Missing customer in trip benchmark")
-                    # assert abs(get_trip_len(c, trip_benchmark) - get_trip_len(c, new_trip)) <= 1e-4
+                    new_trip = lookup2trip(test_lookup, max_route_len, len(trip))
+                    new_lookup_prev, new_lookup_next = trip_lookup_precedence(new_trip, test_trip_num, n)
+
+                    u_removed_route = np.delete(trip_benchmark[r1], pos1)
+                    if pos1 < pos2:
+                        # tmp_route = np.empty(len(trip_benchmark[r2]))
+                        # tmp_route[:pos2] = u_removed_route[:pos2]
+                        # tmp_route[pos2] = u
+                        # tmp_route[pos2 + 1:] = u_removed_route[pos2:]
+                        trip_benchmark[r2] = np.insert(u_removed_route, pos2, u)
+                    else:
+                        # tmp_route = np.empty(len(trip_benchmark[r2]))
+                        # pos = pos2 + 1
+                        # tmp_route[:pos] = u_removed_route[:pos]
+                        # tmp_route[pos] = u
+                        # tmp_route[pos + 1:] = u_removed_route[pos:]
+                        trip_benchmark[r2] = np.insert(u_removed_route, pos2 + 1, u)
+                    np.savetxt("lookup_cgd", test_lookup)
+                    np.savetxt("lookup_prev_cgd", test_lookup_prev)
+                    np.savetxt("lookup_next_cgd", test_lookup_next)
+                    np.savetxt("trip_cgd", trip_benchmark)
+                    np.savetxt("new_trip", new_trip)
+                    np.savetxt("lookup_prev_bench", new_lookup_prev)
+                    np.savetxt("lookup_next_bench", new_lookup_next)
+                    if np.sum(trip_benchmark) != trip_total:
+                        raise ValueError("Missing customer in trip benchmark")
+                    assert abs(get_trip_len(c, trip_benchmark) - get_trip_len(c, new_trip)) <= 1e-4
                     # assert np.allclose(new_trip[:n_row], trip_benchmark[:n_row])
-                    # assert np.allclose(new_lookup_prev[1:], test_lookup_prev[1:])
-                    # assert np.allclose(new_lookup_next[1:], test_lookup_next[1:])
+                    assert np.allclose(new_lookup_prev[1:], test_lookup_prev[1:])
+                    assert np.allclose(new_lookup_next[1:], test_lookup_next[1:])
                     return gain
     # relocate into empty trip
     for r2 in range(len(test_trip_num)):
@@ -86,32 +96,35 @@ def do_ls_inter_m1_test(n, test_lookup, test_lookup_prev, test_lookup_next, q, t
                 gain = m1_cost_inter(c, u_prev, u, x, v, y)
                 if gain > tol:
                     u_dmd, x_dmd, v_dmd, y_dmd = get_demand(q, u, x, v, y)
-                    # np.savetxt("lookup_ori", test_lookup)
-                    # np.savetxt("lookup_prev_ori", test_lookup_prev)
-                    # np.savetxt("lookup_next_ori", test_lookup_next)
-                    # np.savetxt("trip_ori", trip_benchmark)
-                    # np.savetxt("u", np.array([u]))
-                    # np.savetxt("r2", np.array([r2]))
-                    # np.savetxt("gain", np.array([gain]))
+                    np.savetxt("lookup_ori", test_lookup)
+                    np.savetxt("lookup_prev_ori", test_lookup_prev)
+                    np.savetxt("lookup_next_ori", test_lookup_next)
+                    np.savetxt("trip_ori", trip_benchmark)
+                    np.savetxt("u", np.array([u]))
+                    np.savetxt("r2", np.array([r2]))
+                    np.savetxt("gain", np.array([gain]))
                     do_m1_inter(r1, r2, pos2, test_lookup, trip_dmd, u_dmd, test_trip_num, test_lookup_prev,
                                 test_lookup_next, u_prev, u, x, v, y)
-                    # new_trip = lookup2trip(test_lookup, max_route_len, len(trip))
-                    # new_lookup_prev, new_lookup_next = trip_lookup_precedence(new_trip, test_trip_num, n)
-                    #
-                    # trip_benchmark[r1] = np.append(np.delete(trip_benchmark[r1], pos1), 0)
-                    # trip_benchmark[r2] = np.insert(trip_benchmark[r2], pos2 + 1, u)[:-1]
-                    # np.savetxt("lookup_cgd", test_lookup)
-                    # np.savetxt("lookup_prev_cgd", test_lookup_prev)
-                    # np.savetxt("lookup_next_cgd", test_lookup_next)
-                    # np.savetxt("trip_cgd", trip_benchmark)
-                    # np.savetxt("lookup_prev_bench", new_lookup_prev)
-                    # np.savetxt("lookup_next_bench", new_lookup_next)
-                    # if np.sum(trip_benchmark) != trip_total:
-                    #     raise ValueError("Missing customer in trip benchmark")
-                    # assert abs(get_trip_len(c, trip_benchmark) - get_trip_len(c, new_trip)) <= 1e-4
+                    new_trip = lookup2trip(test_lookup, max_route_len, len(trip))
+                    new_lookup_prev, new_lookup_next = trip_lookup_precedence(new_trip, test_trip_num, n)
+
+                    trip_benchmark[r1] = np.append(np.delete(trip_benchmark[r1], pos1), 0)
+                    # tmp_route = trip_benchmark[r2]
+                    # tmp_route[pos2 + 1:] = tmp_route[pos2:-1]
+                    # tmp_route[pos2 + 1] = u
+                    trip_benchmark[r2] = np.insert(trip_benchmark[r2], pos2 + 1, u)[:-1]
+                    np.savetxt("lookup_cgd", test_lookup)
+                    np.savetxt("lookup_prev_cgd", test_lookup_prev)
+                    np.savetxt("lookup_next_cgd", test_lookup_next)
+                    np.savetxt("trip_cgd", trip_benchmark)
+                    np.savetxt("lookup_prev_bench", new_lookup_prev)
+                    np.savetxt("lookup_next_bench", new_lookup_next)
+                    if np.sum(trip_benchmark) != trip_total:
+                        raise ValueError("Missing customer in trip benchmark")
+                    assert abs(get_trip_len(c, trip_benchmark) - get_trip_len(c, new_trip)) <= 1e-4
                     # assert np.allclose(new_trip[:n_row], trip_benchmark[:n_row])
-                    # assert np.allclose(new_lookup_prev[1:], test_lookup_prev[1:])
-                    # assert np.allclose(new_lookup_next[1:], test_lookup_next[1:])
+                    assert np.allclose(new_lookup_prev[1:], test_lookup_prev[1:])
+                    assert np.allclose(new_lookup_next[1:], test_lookup_next[1:])
                     return gain
             break
     return 0.
@@ -138,5 +151,3 @@ def get_test_neighbor(n):
                 res[count] = i, j
                 count += 1
     return res
-
-

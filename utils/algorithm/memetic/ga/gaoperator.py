@@ -1,9 +1,14 @@
 import numpy as np
 from numba import njit, int32
-from utils.algorithm.memetic.ga.gautils import fill_chromosome, get_new_ind, descend
+from utils.algorithm.memetic.ga.gautils import fill_chromosome, get_new_ind, descend, check_spaced
+from utils.aorr.triprepr import trip_lookup, trip_lookup_precedence, lookup2trip, label2route
+from utils.aorr.tripattr import get_trip_num, get_trip_len, get_trip_dmd, fill_zero
+from utils.algorithm.memetic.localsearch.neighbor import neighbourhood_gen
+from utils.numba.bisect import bisect
+from test.localsearch.lstestutils import do_ls_inter_m1_test
 
 
-@njit(fastmath=True, cache=True)
+@njit(fastmath=True)
 def lox(p1: np.ndarray, p2: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """
     TSP like crossover operator
@@ -24,7 +29,7 @@ def lox(p1: np.ndarray, p2: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     return c1, c2
 
 
-@njit(fastmath=True, cache=True)
+@njit(fastmath=True)
 def get_initial_solution(n, size, q, d, c, w, max_load, delta, heuristic_sol):
     res = np.empty((size, n + 1), dtype=int32)
     num_heu_sol = len(heuristic_sol)
@@ -55,9 +60,9 @@ def get_initial_solution(n, size, q, d, c, w, max_load, delta, heuristic_sol):
     return res, ind_fitness, restart
 
 
-@njit(fastmath=True, cache=True)
+@njit(fastmath=True)
 def split(n: int, s: np.ndarray, q: np.ndarray, d: np.ndarray, c: np.ndarray, w: float, max_load: float) \
-        -> tuple[np.ndarray, np.ndarray]:
+        -> tuple[np.ndarray, float]:
     """
     Bellman algorithm to split a permutation of route into several feasible sub-routes with minimum travel distance
     """
@@ -87,7 +92,7 @@ def split(n: int, s: np.ndarray, q: np.ndarray, d: np.ndarray, c: np.ndarray, w:
     return p, v[-1]
 
 
-@njit(fastmath=True, cache=True)
+@njit(fastmath=True)
 def binary_tournament_selection(population: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """
     Tournament selection on a sorted population
@@ -106,20 +111,46 @@ def binary_tournament_selection(population: np.ndarray) -> tuple[np.ndarray, np.
     return population[father], population[mother]
 
 
-@njit(fastmath=True, cache=True)
+@njit(fastmath=True)
 def mutation(n, c, fitness, trip_dmd, q, w, lookup, neighbor, trip_num, lookup_prev, lookup_next, dpf):
-    prev = 0.
-    while True:
-        gain = descend(n, c, trip_dmd, q, w, lookup, neighbor, trip_num, lookup_prev, lookup_next, dpf)
-        if gain < 0. or abs(gain - prev) < 1e-4:
-            break
-        else:
-            fitness -= gain
-            prev = gain
+    gain = descend(n, lookup, lookup_prev, lookup_next, q, trip_dmd, trip_num, c, w, neighbor)
+    fitness -= gain
+    count = 1
+    while gain > 0:
+        idx = np.random.randint(0, len(neighbor))
+        gain = descend(n, lookup, lookup_prev, lookup_next, q, trip_dmd, trip_num, c, w, neighbor)
+        fitness -= gain
+        count += 1
+
+    # prev = 0.
+    # while True:
+    #     gain = descend(n, c, trip_dmd, q, w, lookup, neighbor, trip_num, lookup_prev, lookup_next, dpf)
+    #     if gain < 0. or abs(gain - prev) < 1e-4:
+    #         break
+    #     else:
+    #         fitness -= gain
+    #         prev = gain
     return fitness
 
 
-@njit(fastmath=True, cache=True)
+def mutation_deb(n, lookup, lookup_prev, lookup_next, q, trip_dmd, trip_num, max_route_len, trip, c, trip_benchmark,
+                 n_row, w, neighbor, trip_total, fitness):
+    # debug mode
+    idx = np.random.randint(0, len(neighbor))
+    gain = do_ls_inter_m1_test(n, lookup, lookup_prev, lookup_next, q, trip_dmd, trip_num, max_route_len, trip, c,
+                               trip_benchmark, n_row, w, neighbor, trip_total, idx)
+    fitness -= gain
+    count = 1
+    while gain > 0:
+        idx = np.random.randint(0, len(neighbor))
+        gain = do_ls_inter_m1_test(n, lookup, lookup_prev, lookup_next, q, trip_dmd, trip_num, max_route_len, trip, c,
+                                   trip_benchmark, n_row, w, neighbor, trip_total, idx)
+        fitness -= gain
+        count += 1
+    return fitness
+
+
+@njit(fastmath=True)
 def decoding(trip: np.ndarray, n) -> np.ndarray:
     """
     decode a trip into chromosome
@@ -136,7 +167,6 @@ def decoding(trip: np.ndarray, n) -> np.ndarray:
     return res
 
 
-@njit(fastmath=True)
 def optimize(cx, cy, max_route_len, n, q, d, c, w, max_dist, size, pm, alpha, beta, delta, max_agl, h_sol):
     # todo: add artificial penalty function to objective and increase the penalty factor
     print("compiled")
@@ -164,14 +194,17 @@ def optimize(cx, cy, max_route_len, n, q, d, c, w, max_dist, size, pm, alpha, be
         k = np.random.randint(mid, size)
         modified_fitness = np.concatenate((ind_fit[:k], ind_fit[k + 1:]))  # 1.15 µs ± 13.4 ns
         if np.random.random() < pm:
+            trip_benchmark = trip.copy()
             trip_num = get_trip_num(trip)  # 800 ns ± 6.77 ns
             trip_dmd = get_trip_dmd(trip, q, trip_num)  # 867 ns ± 3.24 ns
             f = val
             lookup = trip_lookup(trip, n)  # 800 ns ± 5.58 ns
             lookup_prev, lookup_next = trip_lookup_precedence(trip, trip_num, n)  # 1.17 µs ± 30.2 ns
-            mutation(n, c, val, trip_dmd, q, w, lookup, neighbor, trip_num, lookup_prev, lookup_next)
+            # mutation(n, c, val, trip_dmd, q, w, lookup, neighbor, trip_num, lookup_prev, lookup_next, 0)
+            mutation_deb(n, lookup, lookup_prev, lookup_next, q, trip_dmd, trip_num, max_route_len, trip, c,
+                         trip_benchmark, len(trip), w, neighbor, np.sum(np.arange(n + 1)), f)
             # retriv trip
-            trip = lookup2trip(lookup, n, max_route_len, len(trip))  # 2.54 µs ± 18.9 ns
+            trip = lookup2trip(lookup, max_route_len, len(trip))  # 2.54 µs ± 18.9 ns
             chromosome = decoding(trip, n)  # 732 ns ± 11.6 ns
             _, fitness = split(n, chromosome, q, d, c, w, max_dist)
             is_spaced = check_spaced(space_hash, fitness, delta)  # 187 ns ± 1.46 ns
