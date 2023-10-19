@@ -2,7 +2,7 @@ import numpy as np
 from numba import njit, int32
 from utils.algorithm.memetic.ga.gautils import fill_chromosome, get_new_ind, descend, check_spaced
 from utils.aorr.triprepr import trip_lookup, trip_lookup_precedence, lookup2trip, label2route
-from utils.aorr.tripattr import get_trip_num, get_trip_len, get_trip_dmd, fill_zero
+from utils.aorr.tripattr import get_trip_num, get_trip_dmd, fill_zero
 from utils.algorithm.memetic.localsearch.neighbor import neighbourhood_gen
 from utils.numba.bisect import bisect
 from test.localsearch.lstestutils import do_ls_inter_m1_test
@@ -112,24 +112,14 @@ def binary_tournament_selection(population: np.ndarray) -> tuple[np.ndarray, np.
 
 
 @njit(fastmath=True)
-def mutation(n, c, fitness, trip_dmd, q, w, lookup, neighbor, trip_num, lookup_prev, lookup_next, dpf):
+def mutation(n, c, fitness, trip_dmd, q, w, lookup, neighbor, trip_num, lookup_prev, lookup_next):
     gain = descend(n, lookup, lookup_prev, lookup_next, q, trip_dmd, trip_num, c, w, neighbor)
     fitness -= gain
     count = 1
     while gain > 0:
-        idx = np.random.randint(0, len(neighbor))
         gain = descend(n, lookup, lookup_prev, lookup_next, q, trip_dmd, trip_num, c, w, neighbor)
         fitness -= gain
         count += 1
-
-    # prev = 0.
-    # while True:
-    #     gain = descend(n, c, trip_dmd, q, w, lookup, neighbor, trip_num, lookup_prev, lookup_next, dpf)
-    #     if gain < 0. or abs(gain - prev) < 1e-4:
-    #         break
-    #     else:
-    #         fitness -= gain
-    #         prev = gain
     return fitness
 
 
@@ -167,10 +157,10 @@ def decoding(trip: np.ndarray, n) -> np.ndarray:
     return res
 
 
-def optimize(cx, cy, max_route_len, n, q, d, c, w, max_dist, size, pm, alpha, beta, delta, max_agl, h_sol):
+@njit
+def optimize(cx, cy, max_route_len, n, q, d, c, w, max_dist, size, pm, alpha, beta, delta, max_agl, pool, ind_fit):
     # todo: add artificial penalty function to objective and increase the penalty factor
-    print("compiled")
-    pool, ind_fit, restart = get_initial_solution(n, size, q, d, c, w, max_dist, delta, h_sol)
+    # pool, ind_fit, restart = get_initial_solution(n, size, q, d, c, w, max_dist, delta, h_sol)
     ordered_idx = np.argsort(ind_fit)
     pool = pool[ordered_idx, :]
     ind_fit = ind_fit[ordered_idx]
@@ -194,19 +184,19 @@ def optimize(cx, cy, max_route_len, n, q, d, c, w, max_dist, size, pm, alpha, be
         k = np.random.randint(mid, size)
         modified_fitness = np.concatenate((ind_fit[:k], ind_fit[k + 1:]))  # 1.15 µs ± 13.4 ns
         if np.random.random() < pm:
-            trip_benchmark = trip.copy()
             trip_num = get_trip_num(trip)  # 800 ns ± 6.77 ns
             trip_dmd = get_trip_dmd(trip, q, trip_num)  # 867 ns ± 3.24 ns
             f = val
             lookup = trip_lookup(trip, n)  # 800 ns ± 5.58 ns
             lookup_prev, lookup_next = trip_lookup_precedence(trip, trip_num, n)  # 1.17 µs ± 30.2 ns
-            # mutation(n, c, val, trip_dmd, q, w, lookup, neighbor, trip_num, lookup_prev, lookup_next, 0)
-            mutation_deb(n, lookup, lookup_prev, lookup_next, q, trip_dmd, trip_num, max_route_len, trip, c,
-                         trip_benchmark, len(trip), w, neighbor, np.sum(np.arange(n + 1)), f)
+            mutated_fitness = mutation(n, c, val, trip_dmd, q, w, lookup, neighbor, trip_num, lookup_prev, lookup_next)
             # retriv trip
             trip = lookup2trip(lookup, max_route_len, len(trip))  # 2.54 µs ± 18.9 ns
             chromosome = decoding(trip, n)  # 732 ns ± 11.6 ns
-            _, fitness = split(n, chromosome, q, d, c, w, max_dist)
+            label, fitness = split(n, chromosome, q, d, c, w, max_dist)
+            if fitness < mutated_fitness:
+                trip = label2route(n, label, child, max_route_len)
+                chromosome = decoding(trip, n)
             is_spaced = check_spaced(space_hash, fitness, delta)  # 187 ns ± 1.46 ns
             if is_spaced:
                 child = chromosome

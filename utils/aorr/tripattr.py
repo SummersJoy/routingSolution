@@ -51,7 +51,7 @@ def get_trip_num(trip: np.ndarray) -> np.ndarray:
     compute the number of customers on each trip
     """
     n = len(trip)
-    res = np.empty(n + 1, dtype=int32)
+    res = np.empty(n, dtype=int32)
     for i in range(n):
         count = 0
         for j in trip[i]:
@@ -60,7 +60,6 @@ def get_trip_num(trip: np.ndarray) -> np.ndarray:
             else:
                 count += 1
         res[i] = count
-    res[-1] = 0
     return res
 
 

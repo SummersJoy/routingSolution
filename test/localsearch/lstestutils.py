@@ -3,7 +3,7 @@ from numba import njit
 from utils.io.rxml import read_xml
 from utils.aorr.triprepr import trip_lookup, lookup2trip, trip_lookup_precedence
 from utils.aorr.tripattr import get_trip_num, get_neighbors, get_demand, get_trip_dmd, get_route_pos, get_trip_len
-from utils.algorithm.memetic.localsearch.lsoperator.single_relocate import m1_cost_inter, do_m1_inter, do_m1_intra
+from utils.algorithm.memetic.localsearch.lsoperator.relocate import m1_cost_inter, do_m1_inter, do_m1_intra
 
 
 def do_ls_inter_m1_test(n, test_lookup, test_lookup_prev, test_lookup_next, q, trip_dmd, test_trip_num, max_route_len,

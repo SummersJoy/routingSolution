@@ -41,11 +41,12 @@ def trip_lookup_precedence(trip: np.ndarray, trip_num: np.ndarray, n: int) -> tu
     return lookup_prev, lookup_next
 
 
-@njit(fastmath=True, cache=True)
+@njit(fastmath=True)
 def lookup2trip(lookup: np.ndarray, max_route_len: int, m: int) -> np.ndarray:
     """
     retrieve trip variable from lookup table
     """
+    # todo: handle empty trip using trip_num!
     res = np.zeros((m, max_route_len), dtype=int32)
     max_rid = 0
     for i in range(1, len(lookup)):

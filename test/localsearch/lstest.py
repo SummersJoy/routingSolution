@@ -4,7 +4,7 @@ from utils.io.rxml import read_xml
 from utils.aorr.triprepr import trip_lookup, lookup2trip, trip_lookup_precedence, label2route
 from utils.aorr.tripattr import get_trip_num, get_neighbors, get_demand, get_trip_dmd, get_route_pos, get_trip_len
 from test.localsearch.lstestutils import get_test_dist_mat
-from utils.algorithm.memetic.localsearch.lsoperator.single_relocate import m1_cost_inter, do_m1_inter, do_m1_intra
+from utils.algorithm.memetic.localsearch.lsoperator.relocate import m1_cost_inter, do_m1_inter, do_m1_intra
 from localsearch.lstestutils import do_ls_inter_m1_test, get_test_neighbor
 from utils.algorithm.memetic.ga.gaoperator import split, decoding
 
@@ -184,18 +184,20 @@ start = time.perf_counter()
 test_case4_inter_route_descend()
 end = time.perf_counter()
 print(f"compile time: {end - start}")
-# test_lookup = np.loadtxt("lookup_ori").astype(int)
-# test_lookup_prev = np.loadtxt("lookup_prev_ori").astype(int)
-# test_lookup_next = np.loadtxt("lookup_next_ori").astype(int)
-# trip_benchmark = np.loadtxt("trip_ori").astype(int)
-# u = int(np.loadtxt("u"))
-# v = int(np.loadtxt("v"))
-# r2 = int(np.loadtxt("r2"))
-# test_lookup_cgd = np.loadtxt("lookup_cgd").astype(int)
-# test_lookup_prev_cgd = np.loadtxt("lookup_prev_cgd").astype(int)
-# test_lookup_next_cgd = np.loadtxt("lookup_next_cgd").astype(int)
-# trip_benchmark_cgd = np.loadtxt("trip_cgd").astype(int)
-# gain = np.loadtxt("gain")
-# new_lookup_prev = np.loadtxt("lookup_prev_bench").astype(int)
-# new_lookup_next = np.loadtxt("lookup_next_bench").astype(int)
-# new_trip = np.loadtxt("new_trip").astype(int)
+
+
+test_lookup = np.loadtxt("lookup_ori").astype(int)
+test_lookup_prev = np.loadtxt("lookup_prev_ori").astype(int)
+test_lookup_next = np.loadtxt("lookup_next_ori").astype(int)
+trip_benchmark = np.loadtxt("trip_ori").astype(int)
+u = int(np.loadtxt("u"))
+v = int(np.loadtxt("v"))
+r2 = int(np.loadtxt("r2"))
+test_lookup_cgd = np.loadtxt("lookup_cgd").astype(int)
+test_lookup_prev_cgd = np.loadtxt("lookup_prev_cgd").astype(int)
+test_lookup_next_cgd = np.loadtxt("lookup_next_cgd").astype(int)
+trip_benchmark_cgd = np.loadtxt("trip_cgd").astype(int)
+gain = np.loadtxt("gain")
+new_lookup_prev = np.loadtxt("lookup_prev_bench").astype(int)
+new_lookup_next = np.loadtxt("lookup_next_bench").astype(int)
+new_trip = np.loadtxt("new_trip").astype(int)

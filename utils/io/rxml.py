@@ -2,6 +2,7 @@
 read vrp datasets in xml format
 """
 import numpy as np
+import os
 
 
 def read_xml(filename: str) -> tuple[np.array, np.array, np.array, float, int]:
@@ -44,3 +45,11 @@ def read_xml(filename: str) -> tuple[np.array, np.array, np.array, float, int]:
 
 def value_extract(line: str, string: str):
     return float(line.strip().replace(f"<{string}>", "").replace(f"</{string}>", ""))
+
+
+def get_file_path(root: str, dataset: str, instance: str, post_fix: str = "xml") -> str:
+    """
+    get the location of file from root, dataset (golden, christofides, etc.) and instance name
+    """
+    instance_name = f"{instance}.{post_fix}"
+    return os.path.join(root, dataset, instance_name)
