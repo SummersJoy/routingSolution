@@ -10,7 +10,7 @@ from utils.algorithm.memetic.ga.gautils import generation_management
 from utils.visualize.sol import plot_sol
 
 # parameters
-pm = 0.05
+pm = 0.2
 size = 30
 max_dist = 10000
 alpha = 30000
@@ -18,11 +18,12 @@ beta = 10000
 delta = 0.5
 rho = 16  # number of restarts
 max_agl = 22.5  # angle threshold
-root = "C:\\Users\\shiyao\\Downloads"
+root = "D:\\ga\\ga\\data\\dvrp"
+# root = "/mnt/d/ga/ga/data/dvrp"
 dataset = "christofides"
 # dataset = "golden"
-instance = "CMT03"
-# instance = "Golden_02"
+instance = "CMT04"
+# instance = "Golden_02"  # 09: segmentation fault # 13 duplicated
 filename = get_file_path(root, dataset, instance)
 cached_pool_path = f"./data/cache/{dataset}/{instance}_pool.npy"
 cached_fitness_path = f"./data/cache/{dataset}/{instance}_fitness.npy"
@@ -42,7 +43,7 @@ for i in range(3):
     heuristic_sol[i] = ind
 h_sol = heuristic_sol
 # maintain a set of good solutions
-sol_size = 10000
+sol_size = 100000
 sol_pool = np.empty((sol_size, n + 1), dtype=int)
 fit_pool = np.empty(sol_size)
 sol_spaced = np.zeros(500000, dtype=int)
@@ -59,17 +60,13 @@ if os.path.exists(cached_pool_path) and os.path.exists(cached_fitness_path):
     initial_sol, initial_fit = generation_management(size, sol_count, sol_pool, fit_pool, delta, n)
 else:
     initial_sol, initial_fit, _ = get_initial_solution(n, size, q, d, c, w, max_dist, delta, heuristic_sol)
-
-for i in range(1000):
-    max_agl = 45. if i % 10 else 180.
+print(instance)
+for i in range(100):
+    max_agl = 22.5 if i % 10 else 45.
     alpha = 9000 if i % 31 else 30000
     beta = 3000 if i % 31 else 10000
     pool, ind_fit = optimize(cx, cy, max_route_len, n, q, d, c, w, max_dist, size, pm, alpha, beta, delta, max_agl,
                              initial_sol, initial_fit)
-    # s = pool[0]
-    # label, fitness = split(n, s, q, d, c, w, max_dist)
-    # trip = label2route(n, label, s, max_route_len)
-    print(ind_fit[0])
     for idx, fit in enumerate(ind_fit):
         if fit < best_val:
             if not sol_spaced[int(fit / delta)]:
@@ -85,10 +82,11 @@ for i in range(1000):
     if ind_fit[0] < best_val:
         best_val = ind_fit[0]
         best_sol = pool[0]
-        print(f"Incumbent solution found : {np.round(best_val, 3)}")
+        print(f"Incumbent solution found in iteration {i}, obj_val : {np.round(best_val, 3)}")
     else:
         heuristic_sol = pool[:3]
-        print(f"Not improved in iteration {i}, current best:{np.round(best_val, 3)}")
+        print(f"Instance {instance}, Not improved in iteration {i}, current best:{np.round(best_val, 3)}, "
+              f"this iteration: {np.round(ind_fit[0], 3)}")
     if sol_count > 500:
         initial_sol, initial_fit = generation_management(size, sol_count, sol_pool, fit_pool, delta, n)
         rand_sol, rand_fit, _ = get_initial_solution(n, size, q, d, c, w, max_dist, delta, heuristic_sol)

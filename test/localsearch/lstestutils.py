@@ -23,6 +23,14 @@ def do_ls_inter_m1_test(n, test_lookup, test_lookup_prev, test_lookup_next, q, t
             if trip_dmd[r2] + u_dmd <= w:
                 gain = m1_cost_inter(c, u_prev, u, x, v, y)
                 if gain > tol:
+                    np.savetxt("lookup_ori", test_lookup)
+                    np.savetxt("lookup_prev_ori", test_lookup_prev)
+                    np.savetxt("lookup_next_ori", test_lookup_next)
+                    np.savetxt("trip_ori", trip_benchmark)
+                    np.savetxt("u", np.array([u]))
+                    np.savetxt("v", np.array([v]))
+                    np.savetxt("r2", np.array([r2]))
+                    np.savetxt("gain", np.array([gain]))
                     do_m1_inter(r1, r2, pos2, test_lookup, trip_dmd, u_dmd, test_trip_num, test_lookup_prev,
                                 test_lookup_next, u_prev, u, x, v, y)
                     new_trip = lookup2trip(test_lookup, max_route_len, len(trip))
@@ -33,6 +41,13 @@ def do_ls_inter_m1_test(n, test_lookup, test_lookup_prev, test_lookup_next, q, t
                     # tmp_route[pos2 + 1:] = tmp_route[pos2:-1]
                     # tmp_route[pos2 + 1] = u
                     trip_benchmark[r2] = np.insert(trip_benchmark[r2], pos2 + 1, u)[:-1]
+                    np.savetxt("lookup_cgd", test_lookup)
+                    np.savetxt("lookup_prev_cgd", test_lookup_prev)
+                    np.savetxt("lookup_next_cgd", test_lookup_next)
+                    np.savetxt("trip_cgd", trip_benchmark)
+                    np.savetxt("new_trip", new_trip)
+                    np.savetxt("lookup_prev_bench", new_lookup_prev)
+                    np.savetxt("lookup_next_bench", new_lookup_next)
                     if np.sum(trip_benchmark) != trip_total:
                         raise ValueError("Missing customer in trip benchmark")
                     assert abs(get_trip_len(c, trip_benchmark) - get_trip_len(c, new_trip)) <= 1e-4

@@ -74,7 +74,7 @@ def get_max_route_len(q: np.ndarray, w: float) -> int:
     for i in range(n):
         current += demand[i]
         if current > w:
-            return i - 1
+            return i + 1
     return n
 
 

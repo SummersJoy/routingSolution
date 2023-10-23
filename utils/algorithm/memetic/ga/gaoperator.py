@@ -4,6 +4,7 @@ from utils.algorithm.memetic.ga.gautils import fill_chromosome, get_new_ind, des
 from utils.aorr.triprepr import trip_lookup, trip_lookup_precedence, lookup2trip, label2route
 from utils.aorr.tripattr import get_trip_num, get_trip_dmd, fill_zero
 from utils.algorithm.memetic.localsearch.neighbor import neighbourhood_gen
+from utils.algorithm.annealing import mutation_annealing
 from utils.numba.bisect import bisect
 from test.localsearch.lstestutils import do_ls_inter_m1_test
 
@@ -112,14 +113,14 @@ def binary_tournament_selection(population: np.ndarray) -> tuple[np.ndarray, np.
 
 
 @njit(fastmath=True)
-def mutation(n, c, fitness, trip_dmd, q, w, lookup, neighbor, trip_num, lookup_prev, lookup_next):
-    gain = descend(n, lookup, lookup_prev, lookup_next, q, trip_dmd, trip_num, c, w, neighbor)
+def mutation(n, c, fitness, trip_dmd, q, w, lookup, neighbor, trip_num, lookup_prev, lookup_next, idx, neighbor_size):
+    gain = descend(n, lookup, lookup_prev, lookup_next, q, trip_dmd, trip_num, c, w, neighbor, idx, neighbor_size)
     fitness -= gain
-    count = 1
+    # count = 1
     while gain > 0:
-        gain = descend(n, lookup, lookup_prev, lookup_next, q, trip_dmd, trip_num, c, w, neighbor)
+        gain = descend(n, lookup, lookup_prev, lookup_next, q, trip_dmd, trip_num, c, w, neighbor, idx, neighbor_size)
         fitness -= gain
-        count += 1
+        # count += 1
     return fitness
 
 
@@ -165,6 +166,7 @@ def optimize(cx, cy, max_route_len, n, q, d, c, w, max_dist, size, pm, alpha, be
     pool = pool[ordered_idx, :]
     ind_fit = ind_fit[ordered_idx]
     neighbor = neighbourhood_gen(cx, cy, max_agl)
+    neighbor_size = len(neighbor)
     space_hash = np.zeros(500000)
     for sol in pool:
         _, fitness = split(n, sol, q, d, c, w, max_dist)
@@ -181,6 +183,9 @@ def optimize(cx, cy, max_route_len, n, q, d, c, w, max_dist, size, pm, alpha, be
         child = fill_zero(n, child)
         label, val = split(n, child, q, d, c, w, max_dist)  # 10.6 µs ± 83 ns
         trip = label2route(n, label, child, max_route_len)  # 1.18 µs ± 24.2 ns
+        # trip_benchmark = trip.copy()
+        # n_row = len(trip)
+        # trip_total = np.sum(trip)
         k = np.random.randint(mid, size)
         modified_fitness = np.concatenate((ind_fit[:k], ind_fit[k + 1:]))  # 1.15 µs ± 13.4 ns
         if np.random.random() < pm:
@@ -189,13 +194,19 @@ def optimize(cx, cy, max_route_len, n, q, d, c, w, max_dist, size, pm, alpha, be
             f = val
             lookup = trip_lookup(trip, n)  # 800 ns ± 5.58 ns
             lookup_prev, lookup_next = trip_lookup_precedence(trip, trip_num, n)  # 1.17 µs ± 30.2 ns
-            mutated_fitness = mutation(n, c, val, trip_dmd, q, w, lookup, neighbor, trip_num, lookup_prev, lookup_next)
+            loc = np.random.randint(0, neighbor_size)
+            # mutated_fitness = mutation(n, c, val, trip_dmd, q, w, lookup, neighbor, trip_num, lookup_prev, lookup_next,
+            #                            loc, neighbor_size)
+            mutated_fitness = mutation_annealing(n, c, val, trip_dmd, q, w, lookup, neighbor, trip_num, lookup_prev,
+                                                 lookup_next, loc, neighbor_size)
+            # mutated_fitness = mutation_deb(n, lookup, lookup_prev, lookup_next, q, trip_dmd, trip_num, max_route_len,
+            #                                trip, c, trip_benchmark, n_row, w, neighbor, trip_total, val)
             # retriv trip
             trip = lookup2trip(lookup, max_route_len, len(trip))  # 2.54 µs ± 18.9 ns
             chromosome = decoding(trip, n)  # 732 ns ± 11.6 ns
             label, fitness = split(n, chromosome, q, d, c, w, max_dist)
             if fitness < mutated_fitness:
-                trip = label2route(n, label, child, max_route_len)
+                trip = label2route(n, label, chromosome, max_route_len)
                 chromosome = decoding(trip, n)
             is_spaced = check_spaced(space_hash, fitness, delta)  # 187 ns ± 1.46 ns
             if is_spaced:
