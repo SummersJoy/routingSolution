@@ -212,7 +212,7 @@ def generation_management(size, sol_count, sol_pool, fit_pool, delta, n):
     # fill first 3 elements
     target_count = 0
     for i in range(sol_count):
-        idx = idx_sort[np.random.randint(0, 80)]
+        idx = idx_sort[np.random.randint(0, 10)]
         if not target_spaced[int(fit_pool[idx] / delta)]:
             target_spaced[int(fit_pool[idx] / delta)] = 1
             target_pool[target_count] = sol_pool[idx]

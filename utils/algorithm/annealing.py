@@ -12,9 +12,7 @@ from utils.algorithm.memetic.localsearch.lsoperator.dblox import m6_cost_inter, 
 
 @njit
 def mutation_annealing(n, c, fitness, trip_dmd, q, w, lookup, neighbor, trip_num, lookup_prev, lookup_next, idx,
-                       neighbor_size):
-    temp = 20.
-    factor = 0.95
+                       neighbor_size, temp, factor):
     stall = 0
     for i in range(1000):
         gain, label = descend_annealing(n, lookup, lookup_prev, lookup_next, q, trip_dmd, trip_num, c, w, neighbor, idx,
@@ -23,7 +21,7 @@ def mutation_annealing(n, c, fitness, trip_dmd, q, w, lookup, neighbor, trip_num
         temp *= factor
         if abs(gain) <= 1e-4:
             stall += 1
-        if stall == 2:
+        if stall == 20:
             break
     return fitness
 

@@ -14,18 +14,18 @@ def get_angle(cx, cy):
         dy = cy[i] - cy[0]
         if dx == 0.:
             if dy >= 0.:
-                res[i] = 0.
+                res[i] = 90.
             else:
-                res[i] = 180.0
+                res[i] = 270.0
         elif dx > 0.:
             if dy == 0.:
-                res[i] = 90.0
+                res[i] = 0.0
             elif dy > 0.:
                 res[i] = np.arctan(dy / dx) * 180.0 / np.pi
             else:
                 res[i] = 360.0 - np.arctan(-dy / dx) * 180.0 / np.pi
         elif dy == 0.:
-            res[i] = 270.0
+            res[i] = 180.0
         elif dy > 0:
             res[i] = 180.0 - np.arctan(-dy / dx) * 180.0 / np.pi
         else:

@@ -159,7 +159,8 @@ def decoding(trip: np.ndarray, n) -> np.ndarray:
 
 
 @njit
-def optimize(cx, cy, max_route_len, n, q, d, c, w, max_dist, size, pm, alpha, beta, delta, max_agl, pool, ind_fit):
+def optimize(cx, cy, max_route_len, n, q, d, c, w, max_dist, size, pm, alpha, beta, delta, max_agl, do_sa, temp, factor,
+             pool, ind_fit):
     # todo: add artificial penalty function to objective and increase the penalty factor
     # pool, ind_fit, restart = get_initial_solution(n, size, q, d, c, w, max_dist, delta, h_sol)
     ordered_idx = np.argsort(ind_fit)
@@ -167,7 +168,7 @@ def optimize(cx, cy, max_route_len, n, q, d, c, w, max_dist, size, pm, alpha, be
     ind_fit = ind_fit[ordered_idx]
     neighbor = neighbourhood_gen(cx, cy, max_agl)
     neighbor_size = len(neighbor)
-    space_hash = np.zeros(500000)
+    space_hash = np.zeros(900000000)
     for sol in pool:
         _, fitness = split(n, sol, q, d, c, w, max_dist)
         hash_idx = int(fitness / delta)
@@ -195,10 +196,12 @@ def optimize(cx, cy, max_route_len, n, q, d, c, w, max_dist, size, pm, alpha, be
             lookup = trip_lookup(trip, n)  # 800 ns ± 5.58 ns
             lookup_prev, lookup_next = trip_lookup_precedence(trip, trip_num, n)  # 1.17 µs ± 30.2 ns
             loc = np.random.randint(0, neighbor_size)
-            # mutated_fitness = mutation(n, c, val, trip_dmd, q, w, lookup, neighbor, trip_num, lookup_prev, lookup_next,
-            #                            loc, neighbor_size)
-            mutated_fitness = mutation_annealing(n, c, val, trip_dmd, q, w, lookup, neighbor, trip_num, lookup_prev,
-                                                 lookup_next, loc, neighbor_size)
+            if not do_sa:
+                mutated_fitness = mutation(n, c, val, trip_dmd, q, w, lookup, neighbor, trip_num, lookup_prev,
+                                           lookup_next, loc, neighbor_size)
+            else:
+                mutated_fitness = mutation_annealing(n, c, val, trip_dmd, q, w, lookup, neighbor, trip_num, lookup_prev,
+                                                     lookup_next, loc, neighbor_size, temp, factor)
             # mutated_fitness = mutation_deb(n, lookup, lookup_prev, lookup_next, q, trip_dmd, trip_num, max_route_len,
             #                                trip, c, trip_benchmark, n_row, w, neighbor, trip_total, val)
             # retriv trip

@@ -1,0 +1,11 @@
+{
+  "annealing": {
+    "do_sa": false,
+    "temp": 50,
+    "factor": 0.98
+  },
+  "lift": {
+    "perturbation_size": 5,
+    "lift_iter": 20
+  }
+}
